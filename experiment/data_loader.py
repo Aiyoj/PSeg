@@ -10,7 +10,7 @@ from pseg.dataflow.label_generator.make_dist_map import MakeDistMap
 from pseg.dataflow.imgaug.crop import RandomCrop
 from pseg.dataflow.raw import DataFromList
 from pseg.dataflow.parallel import MapAndBatchData
-from pseg.dataflow.common import RepeatedData, LocallyShuffleData, BatchData
+from pseg.dataflow.common import BatchData
 
 
 class DataLoader(object):
@@ -36,13 +36,10 @@ class DataLoader(object):
             with open(self.data_list[i], "r") as fid:
                 image_list = fid.readlines()
                 image_path = [
-                    os.path.join(self.data_dir[i], timg.strip()) for timg in image_list
+                    os.path.join(self.data_dir[i], timg.strip().split("\t")[0]) for timg in image_list
                 ]
                 gt_path = [
-                    os.path.join(
-                        self.data_dir[i], timg.split(".")[0].replace("/img/", "/mask/") + ".png"
-                    )
-                    for timg in image_list
+                    os.path.join(self.data_dir[i], timg.strip().split("\t")[1]) for timg in image_list
                 ]
 
                 self.image_paths += image_path
@@ -56,7 +53,7 @@ class DataLoader(object):
                 "args": [
                     {"type": "Fliplr", "args": {"p": 0.5}},
                     {"type": "Affine", "args": {"rotate": [-20, 20]}},
-                    {"type": "Resize", "args": {"size": [0.5, 3]}}
+                    # {"type": "Resize", "args": {"size": [0.5, 2]}}
                 ]
             },
             {
@@ -93,8 +90,8 @@ class DataLoader(object):
     def map_fn(self, datapoints):
         targets = {
             "image": [],
-            "ori_image": [],
-            "ori_label": [],
+            # "ori_image": [],
+            # "ori_label": [],
             "shape": [],
             "filename": [],
             "label": [],
@@ -113,8 +110,8 @@ class DataLoader(object):
             dp_targets = {}
             dp_targets["label"] = gt
             dp_targets["image"] = im
-            dp_targets["ori_image"] = im
-            dp_targets["ori_label"] = gt
+            # dp_targets["ori_image"] = im
+            # dp_targets["ori_label"] = gt
             dp_targets["shape"] = [im.shape[0], im.shape[1]]
             dp_targets["filename"] = image_path
 
@@ -125,8 +122,8 @@ class DataLoader(object):
 
             targets["image"].append(dp_targets["image"])
             targets["label"].append(dp_targets["label"])
-            targets["ori_image"].append(dp_targets["ori_image"])
-            targets["ori_label"].append(dp_targets["ori_label"])
+            # targets["ori_image"].append(dp_targets["ori_image"])
+            # targets["ori_label"].append(dp_targets["ori_label"])
             targets["shape"].append(dp_targets["shape"])
             targets["filename"].append(dp_targets["filename"])
             targets["dist_map"].append(dp_targets["dist_map"])
