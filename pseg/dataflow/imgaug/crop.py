@@ -36,25 +36,37 @@ class RandomCrop(object):
         x1 = np.random.randint(0, min_x + 1)
         x2 = np.random.randint(max_x, w)
 
-        crop_image = image[y1: y2, x1: x2]
-        crop_label = label[y1: y2, x1: x2]
-        # data["crop_label"] = label[min_y:max_y, min_x:max_x]
+        main_image = image[y1: y2, x1: x2]
+        main_label = label[y1: y2, x1: x2]
 
-        crop_h, crop_w = crop_image.shape[:2]
+        main_h, main_w = main_image.shape[:2]
 
-        scale_w = self.size[0] / crop_w
-        scale_h = self.size[1] / crop_h
-        scale = min(scale_w, scale_h)
-        new_h = int(crop_h * scale)
-        new_w = int(crop_w * scale)
+        if main_h > main_w:
+            resize_h, resize_w = self.size[0] * main_h / main_w, self.size[1]
+        else:
+            resize_h, resize_w = self.size[0], self.size[1] * main_w / main_h
 
-        pad_image = np.zeros((self.size[1], self.size[0], 3), np.uint8)
-        pad_image[:new_h, :new_w] = cv2.resize(crop_image, (new_w, new_h))
+        resize_h, resize_w = int(resize_h), int(resize_w)
 
-        pad_label = np.zeros((self.size[1], self.size[0]), np.uint8)
-        pad_label[:new_h, :new_w] = cv2.resize(crop_label, (new_w, new_h))
+        flag = np.random.randint(0, 4)
+        if flag == 0:
+            resized_image = cv2.resize(main_image, (resize_w, resize_h), interpolation=cv2.INTER_CUBIC)
+        elif flag == 1:
+            resized_image = cv2.resize(main_image, (resize_w, resize_h), interpolation=cv2.INTER_LINEAR)
+        elif flag == 2:
+            resized_image = cv2.resize(main_image, (resize_w, resize_h), interpolation=cv2.INTER_AREA)
+        else:
+            resized_image = cv2.resize(main_image, (resize_w, resize_h), interpolation=cv2.INTER_LANCZOS4)
 
-        data["image"] = pad_image
-        data["label"] = pad_label
+        resized_label = cv2.resize(main_label, (resize_w, resize_h), interpolation=cv2.INTER_CUBIC)
+
+        top = np.random.randint(0, resize_h - self.size[0] + 1)
+        left = np.random.randint(0, resize_w - self.size[1] + 1)
+
+        new_image = resized_image[top: top + self.size[0], left: left + self.size[1]]
+        new_label = resized_label[top: top + self.size[0], left: left + self.size[1]]
+
+        data["image"] = new_image
+        data["label"] = new_label
 
         return data
