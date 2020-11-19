@@ -51,15 +51,22 @@ class Trainer(object):
 
         self.model.train()
 
+        def fix_bn(m):
+            classname = m.__class__.__name__
+            if classname.find("BatchNorm") != -1:
+                m.eval()
+
+        self.model.apply(fix_bn)
+
         while True:
             self.logger.info("Training epoch " + str(epoch))
             self.logger.epoch(epoch)
             self.total = len(data_loader)
 
             for batch in data_loader:
-                batch["image"] = batch["image"].float()
-                batch["label"] = batch["label"].float()
-                batch["dist_map"] = batch["dist_map"].float()
+                for key in batch.keys():
+                    if isinstance(batch[key], torch.Tensor):
+                        batch[key] = batch[key].float()
                 self.update_learning_rate(optimizer, epoch, self.steps)
                 self.logger.report_time("Data loading")
 
@@ -82,7 +89,6 @@ class Trainer(object):
                 self.model_saver.save_checkpoint(self.model, "final")
                 self.logger.info("Training done")
                 break
-            iter_delta = 0
 
     def train_step(self, model, criterion, optimizer, batch, epoch, step):
         optimizer.zero_grad()
@@ -117,8 +123,12 @@ class Trainer(object):
             self.logger.add_scalar("loss", loss, step)
             self.logger.add_scalar("learning_rate", self.current_lr, step)
             for name, metric in metrics.items():
-                self.logger.add_scalar(name, metric.mean(), step)
-                self.logger.info("%s: %6f" % (name, metric.mean()))
+                if isinstance(metric, int):
+                    self.logger.add_scalar(name, metric, step)
+                    self.logger.info("%s: %6f" % (name, metric))
+                else:
+                    self.logger.add_scalar(name, metric.mean(), step)
+                    self.logger.info("%s: %6f" % (name, metric.mean()))
 
             self.logger.report_time("Logging")
 
