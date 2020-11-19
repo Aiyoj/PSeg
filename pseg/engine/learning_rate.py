@@ -14,6 +14,21 @@ class ConstantLearningRate(object):
         return self.lr
 
 
+class ConstantWithWarmupLearningRate(object):
+    def __init__(self, configs):
+        self.cfg = Dict(configs)
+
+        self.lr = self.cfg.get("lr", 0.001)
+        self.epochs = self.cfg.get("epochs", 100)
+        self.warmup_step = self.cfg.get("warmup_step", 47)
+
+    def get_learning_rate(self, epoch, step):
+        if step < self.warmup_step:
+            return self.lr * (1 * step / self.warmup_step)
+
+        return self.lr
+
+
 class DecayLearningRate(object):
 
     def __init__(self, configs):
