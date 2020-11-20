@@ -102,6 +102,7 @@ class DataLoader(object):
             image_path, gt_path = dp
             try:
                 im = cv2.imread(image_path, cv2.IMREAD_COLOR)
+                im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
                 gt = cv2.imread(gt_path, cv2.IMREAD_UNCHANGED)
             except Exception:
                 print(image_path)
