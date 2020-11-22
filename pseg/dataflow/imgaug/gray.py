@@ -23,7 +23,7 @@ class AugGray(object):
         mask = np.zeros_like(label)
         mask[label > 50] = 1
 
-        new_image = gray_image * np.expand_dims(mask, -1) + gray_image * np.expand_dims((1 - mask), -1)
+        new_image = gray_image * np.expand_dims(mask, -1) + rgb_image * np.expand_dims((1 - mask), -1)
         data["image"] = new_image
 
-        return new_image
+        return data
