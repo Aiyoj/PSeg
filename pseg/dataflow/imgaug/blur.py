@@ -7,6 +7,8 @@ class AugBlur(object):
         self.p = p
 
     def __call__(self, data):
+        assert "image" in data, "`image` in data is required by this process"
+
         if random.random() < self.p:
             return data
 
@@ -24,4 +26,5 @@ class AugBlur(object):
             image = cv2.blur(image, (ks, ks))
 
         data["image"] = image
+
         return data

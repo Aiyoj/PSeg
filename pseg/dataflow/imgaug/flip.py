@@ -7,6 +7,7 @@ class Fliplr(object):
         self.p = p
 
     def __call__(self, data):
+        assert "image" in data and "label" in data, "`image` and `label` in data is required by this process"
         if random.random() < self.p:
             return data
 
