@@ -11,6 +11,7 @@ class AugHSV(object):
         self.vgain = vgain
 
     def __call__(self, data):
+        assert "image" in data, "`image` in data is required by this process"
         if random.random() < self.p:
             return data
 
