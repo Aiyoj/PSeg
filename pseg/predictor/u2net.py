@@ -56,11 +56,24 @@ class U2NetPredictor(object):
         resize_h = h
 
         # limit the min side
-        if min(resize_h, resize_w) > min_side_len:
+        if max(resize_h, resize_w) > min_side_len:
+            # if resize_h > resize_w:
+            #     ratio = float(min_side_len) / resize_w
+            # else:
+            #     ratio = float(min_side_len) / resize_h
+
             if resize_h > resize_w:
-                ratio = float(min_side_len) / resize_w
-            else:
                 ratio = float(min_side_len) / resize_h
+            else:
+                ratio = float(min_side_len) / resize_w
+
+        # # limit the min side
+        # if min(resize_h, resize_w) > min_side_len:
+        #     if resize_h > resize_w:
+        #         ratio = float(min_side_len) / resize_w
+        #     else:
+        #         ratio = float(min_side_len) / resize_h
+
         else:
             ratio = 1.
         resize_h = int(resize_h * ratio)
@@ -88,8 +101,21 @@ class U2NetPredictor(object):
         ratio_w = resize_w / float(w)
         return im, (ratio_h, ratio_w)
 
+    def resize_v2(self, im):
+        h, w = im.shape[:2]
+        if h > w:
+            resize_h, resize_w = self.min_side_len * h / w, self.min_side_len
+        else:
+            resize_h, resize_w = self.min_side_len, self.min_side_len * w / h
+
+        resize_h, resize_w = int(resize_h), int(resize_w)
+
+        imm = cv2.resize(im, (resize_w, resize_h))
+
+        return imm
+
     def predict(self, image):
-        im, ratio_list = self.resize(image)
+        im = self.resize_v2(image)
         im = self.normalize_v2(im)
         im = np.expand_dims(im, 0)
         im = torch.from_numpy(im)

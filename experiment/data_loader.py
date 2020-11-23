@@ -4,7 +4,12 @@ import torch
 import random
 import numpy as np
 
-from pseg.dataflow.imgaug.iaa_augment import IaaAugment
+from pseg.dataflow.imgaug.blur import AugMotionBlur
+from pseg.dataflow.imgaug.noise import AugNoise
+from pseg.dataflow.imgaug.flip import Fliplr
+from pseg.dataflow.imgaug.gray import AugGray
+from pseg.dataflow.imgaug.hsv import AugHSV
+from pseg.dataflow.imgaug.iaa import IaaAugment
 from pseg.dataflow.imgaug.normalize import NormalizeV2
 from pseg.dataflow.label_generator.make_dist_map import MakeDistMap
 from pseg.dataflow.imgaug.crop import RandomCrop
@@ -34,12 +39,12 @@ class DataLoader(object):
 
         for i in range(len(self.data_dir)):
             with open(self.data_list[i], "r") as fid:
-                image_list = fid.readlines()
+                row_list = fid.readlines()
                 image_path = [
-                    os.path.join(self.data_dir[i], timg.strip().split("\t")[0]) for timg in image_list
+                    os.path.join(self.data_dir[i], timg.strip().split("\t")[0]) for timg in row_list
                 ]
                 gt_path = [
-                    os.path.join(self.data_dir[i], timg.strip().split("\t")[1]) for timg in image_list
+                    os.path.join(self.data_dir[i], timg.strip().split("\t")[1]) for timg in row_list
                 ]
 
                 self.image_paths += image_path

@@ -10,6 +10,8 @@ class RandomCrop(object):
         self.size = size
 
     def __call__(self, data):
+        assert "image" in data and "label" in data, "`image` and `label` in data is required by this process"
+
         image = data["image"]
         label = data["label"]
 

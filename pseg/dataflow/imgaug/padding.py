@@ -7,6 +7,7 @@ class Padding(object):
 
     def __call__(self, data):
         assert "image" in data, "`image` in data is required by this process"
+
         image = data["image"]
         h, w = image.shape[:2]
         max_side_len = max(h, w)
