@@ -2,7 +2,7 @@ import cv2
 import random
 
 
-class Fliplr(object):
+class FlipLR(object):
     def __init__(self, p=0.5):
         self.p = p
 
