@@ -4,13 +4,14 @@ import torch
 import random
 import numpy as np
 
-from pseg.dataflow.imgaug.blur import AugMotionBlur
+from pseg.dataflow.imgaug.affine import Affine
+from pseg.dataflow.imgaug.blur import AugMotionBlur, AugBlur
 from pseg.dataflow.imgaug.noise import AugNoise
-from pseg.dataflow.imgaug.flip import Fliplr
+from pseg.dataflow.imgaug.flip import FlipLR
 from pseg.dataflow.imgaug.gray import AugGray
 from pseg.dataflow.imgaug.hsv import AugHSV
 from pseg.dataflow.imgaug.iaa import IaaAugment
-from pseg.dataflow.imgaug.normalize import NormalizeV2
+from pseg.dataflow.imgaug.normalize import Normalize
 from pseg.dataflow.label_generator.make_dist_map import MakeDistMap
 from pseg.dataflow.imgaug.crop import RandomCrop
 from pseg.dataflow.raw import DataFromList
@@ -20,7 +21,8 @@ from pseg.dataflow.common import BatchData
 
 class DataLoader(object):
     def __init__(self, data_dir: list, data_list: list, batch_size: int, num_worker: int = 1, buffer_size: int = 32,
-                 shuffle: bool = True, seed: int = None, remainder: bool = True, is_training: bool = True):
+                 shuffle: bool = True, seed: int = None, remainder: bool = True, is_training: bool = True,
+                 pre_processes: list = None):
         self.data_dir = data_dir
         self.data_list = data_list
         self.batch_size = batch_size
@@ -30,6 +32,7 @@ class DataLoader(object):
         self.seed = seed
         self.remainder = remainder
         self.is_training = is_training
+        self.pre_processes = pre_processes
 
         self.image_paths = []
         self.gt_paths = []
@@ -52,26 +55,19 @@ class DataLoader(object):
 
         self.data_list = [(img_path, gt_path) for img_path, gt_path in zip(self.image_paths, self.gt_paths)]
 
-        self.pre_processes = [
-            {
-                "type": "IaaAugment",
-                "args": [
-                    {"type": "Fliplr", "args": {"p": 0.5}},
-                    {"type": "Affine", "args": {"rotate": [-20, 20]}},
-                    # {"type": "Resize", "args": {"size": [0.5, 2]}}
-                ]
-            },
-            {
-                "type": "RandomCrop",
-                "args": {}
-            },
-            {
-                "type": "NormalizeV2", "args": {}
-            },
-            {
-                "type": "MakeDistMap", "args": {}
-            }
-        ]
+        if self.pre_processes is None:
+            self.pre_processes = [
+                {"type": "AugHSV", "args": {"p": 0.5}},
+                {"type": "AugNoise", "args": {"p": 0.5}},
+                {"type": "AugGray", "args": {"p": 0.5}},
+                {"type": "AugBlur", "args": {"p": 0.5}},
+                # {"type": "AugMotionBlur", "args": {"p": 0.5}},
+                {"type": "FlipLR", "args": {"p": 0.5}},
+                {"type": "Affine", "args": {"rotate": [-20, 20]}},
+                {"type": "RandomCrop", "args": {}},
+                {"type": "Normalize", "args": {}},
+                {"type": "MakeDistMap", "args": {}}
+            ]
         self.augs = []
         for aug in self.pre_processes:
             if "args" not in aug:
@@ -83,10 +79,7 @@ class DataLoader(object):
             else:
                 cls = eval(aug["type"])(args)
             self.augs.append(cls)
-        # print(len(self.data_list))
         ds = DataFromList(self.data_list, shuffle=self.shuffle, seed=self.seed)
-        # ds = RepeatedData(ds, n_epoch=1)
-        # ds = LocallyShuffleData(ds, buffer_size=100)
         ds = BatchData(ds, self.batch_size, use_list=True, remainder=self.remainder)
         self.ds = MapAndBatchData(ds, self.num_worker, self.map_fn, 1, buffer_size=self.buffer_size)
 
@@ -95,8 +88,8 @@ class DataLoader(object):
     def map_fn(self, datapoints):
         targets = {
             "image": [],
-            # "ori_image": [],
-            # "ori_label": [],
+            "ori_image": [],
+            "ori_label": [],
             "shape": [],
             "filename": [],
             "label": [],
@@ -128,11 +121,23 @@ class DataLoader(object):
 
             targets["image"].append(dp_targets["image"])
             targets["label"].append(dp_targets["label"])
-            # targets["ori_image"].append(dp_targets["ori_image"])
-            # targets["ori_label"].append(dp_targets["ori_label"])
             targets["shape"].append(dp_targets["shape"])
             targets["filename"].append(dp_targets["filename"])
-            targets["dist_map"].append(dp_targets["dist_map"])
+
+            if "dist_map" in dp_targets.keys():
+                targets["dist_map"].append(dp_targets["dist_map"])
+            else:
+                targets.pop("dist_map")
+
+            if "ori_image" in dp_targets.keys():
+                targets["ori_image"].append(dp_targets["ori_image"])
+            else:
+                targets.pop("ori_image")
+
+            if "ori_label" in dp_targets.keys():
+                targets["ori_label"].append(dp_targets["ori_label"])
+            else:
+                targets.pop("ori_label")
 
         return targets
 
