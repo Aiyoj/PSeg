@@ -127,17 +127,20 @@ class DataLoader(object):
             if "dist_map" in dp_targets.keys():
                 targets["dist_map"].append(dp_targets["dist_map"])
             else:
-                targets.pop("dist_map")
+                if "dist_map" in targets.keys():
+                    del targets["dist_map"]
 
             if "ori_image" in dp_targets.keys():
                 targets["ori_image"].append(dp_targets["ori_image"])
             else:
-                targets.pop("ori_image")
+                if "ori_image" in targets.keys():
+                    del targets["ori_image"]
 
             if "ori_label" in dp_targets.keys():
                 targets["ori_label"].append(dp_targets["ori_label"])
             else:
-                targets.pop("ori_label")
+                if "ori_label" in targets.keys():
+                    del targets["ori_label"]
 
         return targets
 
