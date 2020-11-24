@@ -9,7 +9,7 @@ class AugNoise(object):
     def __call__(self, data):
         assert "image" in data, "`image` in data is required by this process"
 
-        if random.random() < self.p:
+        if random.random() < 1 - self.p:
             return data
 
         image = data["image"]
