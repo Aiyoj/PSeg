@@ -139,7 +139,12 @@ class U2NetHeadV1(nn.Module):
         self.side5 = nn.Conv2d(cfg[0][2], 4 * out_ch, 3, padding=1)  # 512
         self.side6 = nn.Conv2d(cfg[0][2], 4 * out_ch, 3, padding=1)  # 512
 
-        self.ps = nn.PixelShuffle(2)
+        self.ps1 = nn.PixelShuffle(2)
+        self.ps2 = nn.PixelShuffle(2)
+        self.ps3 = nn.PixelShuffle(2)
+        self.ps4 = nn.PixelShuffle(2)
+        self.ps5 = nn.PixelShuffle(2)
+        self.ps6 = nn.PixelShuffle(2)
 
     def forward(self, features):
         hx1, hx2, hx3, hx4, hx5, hx6 = features
@@ -148,39 +153,39 @@ class U2NetHeadV1(nn.Module):
 
         # side 6
         d6 = self.side6(hx6)
-        d6 = self.ps(d6)
+        d6 = self.ps6(d6)
 
         hx5d = self.stage5d(torch.cat((d6, hx6up, hx5), 1))
         hx5dup = F.interpolate(hx5d, size=hx4.shape[2:], mode="bilinear", align_corners=False)
 
         # side 5
         d5 = self.side5(hx5d)
-        d5 = self.ps(d5)
+        d5 = self.ps5(d5)
 
         hx4d = self.stage4d(torch.cat((d5, hx5dup, hx4), 1))
         hx4dup = F.interpolate(hx4d, size=hx3.shape[2:], mode="bilinear", align_corners=False)
 
         # side 4
         d4 = self.side4(hx4d)
-        d4 = self.ps(d4)
+        d4 = self.ps4(d4)
 
         hx3d = self.stage3d(torch.cat((d4, hx4dup, hx3), 1))
         hx3dup = F.interpolate(hx3d, size=hx2.shape[2:], mode="bilinear", align_corners=False)
 
         d3 = self.side3(hx3d)
-        d3 = self.ps(d3)
+        d3 = self.ps3(d3)
 
         hx2d = self.stage2d(torch.cat((d3, hx3dup, hx2), 1))
         hx2dup = F.interpolate(hx2d, size=hx1.shape[2:], mode="bilinear", align_corners=False)
 
         d2 = self.side2(hx2d)
-        d2 = self.ps(d2)
+        d2 = self.ps2(d2)
 
         hx1d = self.stage1d(torch.cat((d2, hx2dup, hx1), 1))
 
         # side 1
         d1 = self.side1(hx1d)
-        d1 = self.ps(d1)
+        d1 = self.ps1(d1)
 
         d2 = F.interpolate(d2, size=d1.shape[2:], mode="bilinear", align_corners=False)
 
