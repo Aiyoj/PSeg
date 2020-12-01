@@ -32,13 +32,13 @@ class DFMAtt(nn.Module):
         b, c, h, w = x.size()
         proj_feat = self.conv(x)
         offsets = []
-        for x in range(self.k):
-            flow = self.offset_conv[x](x)
+        for i in range(self.k):
+            flow = self.offset_conv[i](x)
             offsets.append(flow)
         offset_weights = torch.repeat_interleave(self.weight_conv(x), self.out_ch, 1)
         feats = []
-        for x in range(self.k):
-            flow = offsets[x]
+        for i in range(self.k):
+            flow = offsets[i]
             flow = flow.permute(0, 2, 3, 1)
             grid_y, grid_x = torch.meshgrid([torch.arange(0, h), torch.arange(0, w)])
             grid = torch.stack((grid_x, grid_y), 2).float()
@@ -48,7 +48,7 @@ class DFMAtt(nn.Module):
             vgrid_x = 2.0 * vgrid[:, :, :, 0] / max(w - 1, 1) - 1.0
             vgrid_y = 2.0 * vgrid[:, :, :, 1] / max(h - 1, 1) - 1.0
             vgrid_scaled = torch.stack((vgrid_x, vgrid_y), dim=3)
-            feat = F.grid_sample(proj_feat, vgrid_scaled, mode="bilinear", padding_mode="zeros")
+            feat = F.grid_sample(proj_feat, vgrid_scaled, mode="bilinear", padding_mode="zeros", align_corners=False)
             feats.append(feat)
         feat = torch.cat(feats, 1) * offset_weights
         feat = sum(torch.split(feat, self.out_ch, 1))
