@@ -3,7 +3,8 @@ import torch.nn as nn
 
 
 class Trainer(object):
-    def __init__(self, model, criterion, optimizer_scheduler, learning_rate, model_saver, checkpoint, logger):
+    def __init__(self, model, criterion, optimizer_scheduler, learning_rate, model_saver, checkpoint, logger,
+                 frozen_bn=False):
 
         self.model = model
         self.criterion = criterion
@@ -12,6 +13,7 @@ class Trainer(object):
         self.model_saver = model_saver
         self.checkpoint = checkpoint
         self.logger = logger
+        self.frozen_bn = frozen_bn
 
         if torch.cuda.is_available():
             torch.set_default_tensor_type("torch.cuda.FloatTensor")
@@ -51,12 +53,13 @@ class Trainer(object):
 
         self.model.train()
 
-        def fix_bn(m):
-            classname = m.__class__.__name__
-            if classname.find("BatchNorm") != -1:
-                m.eval()
+        if self.frozen_bn:
+            def fix_bn(m):
+                classname = m.__class__.__name__
+                if classname.find("BatchNorm") != -1:
+                    m.eval()
 
-        self.model.apply(fix_bn)
+            self.model.apply(fix_bn)
 
         while True:
             self.logger.info("Training epoch " + str(epoch))
