@@ -5,6 +5,8 @@ import random
 import numpy as np
 
 from pseg.dataflow.imgaug.affine import Affine
+from pseg.dataflow.imgaug.perspective import Perspective
+from pseg.dataflow.imgaug.thin_plate_spline import ThinPlateSpline
 from pseg.dataflow.imgaug.blur import AugMotionBlur, AugBlur
 from pseg.dataflow.imgaug.noise import AugNoise
 from pseg.dataflow.imgaug.flip import FlipLR
@@ -13,7 +15,7 @@ from pseg.dataflow.imgaug.hsv import AugHSV
 from pseg.dataflow.imgaug.iaa import IaaAugment
 from pseg.dataflow.imgaug.normalize import Normalize
 from pseg.dataflow.label_generator.make_dist_map import MakeDistMap
-from pseg.dataflow.imgaug.crop import RandomCrop
+from pseg.dataflow.imgaug.crop import RandomCrop, RandomCropV2, RandomCropV3
 from pseg.dataflow.raw import DataFromList
 from pseg.dataflow.parallel import MapAndBatchData
 from pseg.dataflow.common import BatchData
@@ -58,13 +60,15 @@ class DataLoader(object):
         if self.pre_processes is None:
             self.pre_processes = [
                 {"type": "AugHSV", "args": {"p": 0.5}},
-                {"type": "AugNoise", "args": {"p": 0.5}},
+                # {"type": "AugNoise", "args": {"p": 0.5}},
                 {"type": "AugGray", "args": {"p": 0.5}},
-                {"type": "AugBlur", "args": {"p": 0.5}},
+                # {"type": "AugBlur", "args": {"p": 0.5}},
                 # {"type": "AugMotionBlur", "args": {"p": 0.5}},
                 {"type": "FlipLR", "args": {"p": 0.5}},
-                {"type": "Affine", "args": {"rotate": [-20, 20]}},
-                {"type": "RandomCrop", "args": {}},
+                {"type": "Affine", "args": {"rotate": [-30, 30]}},
+                {"type": "RandomCrop", "args": {"size": (640, 640)}},
+                {"type": "Perspective", "args": {"p": 0.5}},
+                {"type": "ThinPlateSpline", "args": {"p": 0.5}},
                 {"type": "Normalize", "args": {}},
                 {"type": "MakeDistMap", "args": {}}
             ]
@@ -95,7 +99,7 @@ class DataLoader(object):
             "label": [],
             "dist_map": []
         }
-        size = random.choice([320])
+        # size = random.choice([320])
         for dp in zip(datapoints[0], datapoints[1]):
             image_path, gt_path = dp
             try:
@@ -115,8 +119,8 @@ class DataLoader(object):
             dp_targets["filename"] = image_path
 
             for aug in self.augs:
-                if isinstance(aug, RandomCrop):
-                    aug.size = [size, size]
+                # if isinstance(aug, RandomCrop):
+                #     aug.size = [size, size]
                 dp_targets = aug(dp_targets)
 
             targets["image"].append(dp_targets["image"])
