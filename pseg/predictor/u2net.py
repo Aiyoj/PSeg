@@ -1,4 +1,5 @@
 import cv2
+import math
 import torch
 import numpy as np
 
@@ -11,26 +12,33 @@ class U2NetPredictor(object):
     def __init__(self, config=None):
         self.cfg = Dict(config)
 
-        self.model_name = self.cfg.get("model_name", "small")
+        self.model_config = self.cfg.get(
+            "model_config", {
+                "backbone": {"type": "U2NetBackbone", "args": {"in_ch": 3, "model_name": "large"}},
+                "head": {"type": "U2NetHead", "args": {"out_ch": 1, "model_name": "large"}}
+            }
+        )
         self.min_side_len = self.cfg.get("min_side_len", 320)
         self.resume = self.cfg.get("resume", False)
+        self.scale = self.cfg.get("scale", 32)
+        self.key = self.cfg.get("key", "d0")
+        self.strict = self.cfg.get("strict", True)
 
         if torch.cuda.is_available():
             torch.set_default_tensor_type("torch.cuda.FloatTensor")
             self.device = torch.device("cuda")
         else:
             self.device = torch.device("cpu")
-
-        self.model = U2Net({"model_name": self.model_name})
+        self.model = U2Net(self.model_config)
         if self.resume:
-            self.model.load_state_dict(torch.load(self.resume, map_location=self.device))
+            self.model.load_state_dict(torch.load(self.resume, map_location=self.device), strict=self.strict)
             print(f"load model from {self.resume} success !")
 
         self.model = self.model.to(self.device)
         self.model.eval()
 
     @staticmethod
-    def normalize_v2(im):
+    def normalize(im):
         img_mean = np.array([0.485, 0.456, 0.406], dtype=np.float32)
         img_std = np.array([0.229, 0.224, 0.225], dtype=np.float32)
         im = im.astype(np.float32, copy=False)
@@ -42,81 +50,41 @@ class U2NetPredictor(object):
         return im
 
     def resize(self, im):
-        """
-        resize image to a size multiple of 32 which is required by the network
-        args:
-            img(array): array with shape [h, w, c]
-        return(tuple):
-            img, (ratio_h, ratio_w)
-        """
-        min_side_len = self.min_side_len
-        h, w, _ = im.shape
-
-        resize_w = w
-        resize_h = h
-
-        # limit the min side
-        if max(resize_h, resize_w) > min_side_len:
-            # if resize_h > resize_w:
-            #     ratio = float(min_side_len) / resize_w
-            # else:
-            #     ratio = float(min_side_len) / resize_h
-
-            if resize_h > resize_w:
-                ratio = float(min_side_len) / resize_h
-            else:
-                ratio = float(min_side_len) / resize_w
-
-        # # limit the min side
-        # if min(resize_h, resize_w) > min_side_len:
-        #     if resize_h > resize_w:
-        #         ratio = float(min_side_len) / resize_w
-        #     else:
-        #         ratio = float(min_side_len) / resize_h
-
-        else:
-            ratio = 1.
-        resize_h = int(resize_h * ratio)
-        resize_w = int(resize_w * ratio)
-        if resize_h % 32 == 0:
-            resize_h = resize_h
-        elif resize_h // 32 <= 1:
-            resize_h = 32
-        else:
-            resize_h = (resize_h // 32 - 1) * 32
-        if resize_w % 32 == 0:
-            resize_w = resize_w
-        elif resize_w // 32 <= 1:
-            resize_w = 32
-        else:
-            resize_w = (resize_w // 32 - 1) * 32
-        try:
-            if int(resize_w) <= 0 or int(resize_h) <= 0:
-                return None, (None, None)
-            im = cv2.resize(im, (int(resize_w), int(resize_h)))
-        except:
-            print(im.shape, resize_w, resize_h)
-            return None, (None, None)
-        ratio_h = resize_h / float(h)
-        ratio_w = resize_w / float(w)
-        return im, (ratio_h, ratio_w)
-
-    def resize_v2(self, im):
         h, w = im.shape[:2]
         if h > w:
             resize_h, resize_w = self.min_side_len * h / w, self.min_side_len
         else:
             resize_h, resize_w = self.min_side_len, self.min_side_len * w / h
 
+        padding_h, padding_w = resize_h, resize_w
+
+        if h > w:
+            if padding_h % self.scale == 0:
+                padding_h = padding_h
+            else:
+                padding_h = math.ceil(padding_h / self.scale) * self.scale
+        else:
+            if padding_w % self.scale == 0:
+                padding_w = padding_w
+            else:
+                padding_w = math.ceil(padding_w / self.scale) * self.scale
+
         resize_h, resize_w = int(resize_h), int(resize_w)
+        padding_h, padding_w = int(padding_h), int(padding_w)
 
-        imm = cv2.resize(im, (resize_w, resize_h))
+        padding_image = np.zeros((padding_h, padding_w, 3), np.uint8)
+        # print(padding_image.shape)
 
-        return imm
+        im = cv2.resize(im, (resize_w, resize_h))
+        # print(im.shape)
+
+        padding_image[:resize_h, :resize_w, :] = im
+
+        return padding_image, (padding_h - resize_h, padding_w - resize_w)
 
     def predict(self, image):
-        im = self.resize_v2(image)
-        im = self.normalize_v2(im)
+        im, (pad_h, pad_w) = self.resize(image)
+        im = self.normalize(im)
         im = np.expand_dims(im, 0)
         im = torch.from_numpy(im)
         im = im.to(self.device)
@@ -124,7 +92,7 @@ class U2NetPredictor(object):
         with torch.no_grad():
             ret = self.model(im)
 
-            d1 = ret["d0"]
+            d = ret[self.key]
 
             def normPRED(d):
                 ma = torch.max(d)
@@ -134,7 +102,7 @@ class U2NetPredictor(object):
 
                 return dn
 
-            pred = d1[:, 0, :, :]
+            pred = d[:, 0, :, :]
             pred = normPRED(pred)
 
             pred = pred.detach().cpu().numpy()
