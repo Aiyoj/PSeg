@@ -2,8 +2,8 @@ import torch.nn as nn
 
 from addict import Dict
 
-from pseg.modeling.backbone.u2net_backbone import U2NetBackbone, U2NetBackboneV1
-from pseg.modeling.head.u2net_head import U2NetHead, U2NetHeadV1
+from pseg.modeling.backbone.u2net_backbone import U2NetBackbone, U2NetBackboneV1, U2NetBackboneV2, U2NetBackboneV3
+from pseg.modeling.head.u2net_head import U2NetHead, U2NetHeadV1, U2NetHeadV2, U2NetHeadV3
 
 
 class U2Net(nn.Module):
@@ -28,14 +28,3 @@ class U2Net(nn.Module):
         x = self.backbone(x)
         x = self.head(x)
         return x
-
-
-if __name__ == "__main__":
-    import torch
-
-    model = U2Net({
-        "backbone": {"type": "U2NetBackboneV1", "args": {"in_ch": 3, "model_name": "large"}},
-        "head": {"type": "U2NetHeadV1", "args": {"out_ch": 1, "model_name": "large"}}
-    })
-
-    model(torch.ones(1, 3, 640, 640))
