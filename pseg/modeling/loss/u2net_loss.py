@@ -6,6 +6,7 @@ from pseg.modeling.loss.dice_loss import DiceLoss
 from pseg.modeling.loss.boundary_loss import BoundaryLoss
 from pseg.modeling.loss.balance_cross_entropy_loss import BalanceCrossEntropyLoss
 from pseg.modeling.loss.l1_loss import L1Loss
+from pseg.modeling.loss.focal_loss import FocalLoss
 
 
 class U2NetLossV1(nn.Module):
@@ -312,6 +313,62 @@ class U2NetLossV6(nn.Module):
             # d0_bce=d0_bce,
             d1_bce=d1_bce, d2_bce=d2_bce, d3_bce=d3_bce,
             d4_bce=d4_bce, bce_loss=bce_loss, total_loss=total_loss
+        )
+
+        return total_loss, metrics
+
+
+class U2NetLossV7(nn.Module):
+    def __init__(self):
+        super(U2NetLossV7, self).__init__()
+
+        self.bce_loss = nn.BCELoss(reduction="mean")
+        self.focal_loss = FocalLoss()
+        self.l1_loss = nn.L1Loss(reduction="mean")
+
+    def forward(self, pred, batch, **kwargs):
+        # d0 = pred["d0"]
+        d1 = pred["d1"]
+        d2 = pred["d2"]
+        d3 = pred["d3"]
+        d4 = pred["d4"]
+
+        label = batch["label"]
+
+        # d0_bce = self.bce_loss(d0, label)
+        d1_bce = self.bce_loss(d1, label)
+        d2_bce = self.bce_loss(d2, label)
+        d3_bce = self.bce_loss(d3, label)
+        d4_bce = self.bce_loss(d4, label)
+
+        d1_focal = self.focal_loss(d1, label)
+        d2_focal = self.focal_loss(d2, label)
+        d3_focal = self.focal_loss(d3, label)
+        d4_focal = self.focal_loss(d4, label)
+
+        d1_l1 = self.l1_loss(d1, label)
+        d2_l2 = self.l1_loss(d2, label)
+        d3_l3 = self.l1_loss(d3, label)
+        d4_l4 = self.l1_loss(d4, label)
+
+        # bce_loss = d0_bce + d1_bce + d2_bce + d3_bce + d4_bce
+        bce_loss = d1_bce + d2_bce + d3_bce + d4_bce
+
+        focal_loss = d1_focal + d2_focal + d3_focal + d4_focal
+
+        l1_loss = d1_l1 + d2_l2 + d3_l3 + d4_l4
+
+        total_loss = bce_loss + focal_loss + l1_loss
+
+        metrics = OrderedDict(
+            # d0_bce=d0_bce,
+            d1_bce=d1_bce, d2_bce=d2_bce, d3_bce=d3_bce,
+            d4_bce=d4_bce, bce_loss=bce_loss,
+            d1_focal=d1_focal, d2_focal=d2_focal, d3_focal=d3_focal,
+            d4_focal=d4_focal, focal_loss=focal_loss,
+            d1_l1=d1_l1, d2_l2=d2_l2, d3_l3=d3_l3,
+            d4_l4=d4_l4, l1_loss=l1_loss,
+            total_loss=total_loss
         )
 
         return total_loss, metrics
