@@ -68,7 +68,7 @@ class Affine(object):
         center = (np.array([width, height]) * np.array((0.5, 0.5))) - 0.5
         deg = self._rand_range(self.rotate[0], self.rotate[1])
 
-        transform_matrix = cv2.getRotationMatrix2D(tuple(center), deg, scale)
+        transform_matrix = cv2.getRotationMatrix2D(tuple(center), float(deg), scale)
 
         # Apply shear :
         if self.shear > 0.0:
